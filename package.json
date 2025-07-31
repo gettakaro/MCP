@@ -1,14 +1,15 @@
 {
-  "name": "mcp-echo-server",
+  "name": "takaro-mcp",
   "version": "1.0.0",
-  "description": "MCP server with HTTP transport and echo tool",
+  "description": "Model Context Protocol server for Takaro API integration",
   "type": "module",
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
     "dev": "tsc --watch & nodemon build/index.js",
-    "clean": "rm -rf build"
+    "clean": "rm -rf build",
+    "test": "npm run build && node --test build/__tests__/integration.test.js"
   },
   "keywords": [
     "mcp",

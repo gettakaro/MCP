@@ -1,6 +1,10 @@
 import { Client } from '@takaro/apiclient'
 
-export async function authTakaro() {
+let client: Client;
+
+export async function getClient() {
+  if (client) return client;
+
   const username = process.env.TAKARO_USERNAME;
   const password = process.env.TAKARO_PASSWORD;
   const takaroUrl = process.env.TAKARO_HOST || 'https://api.takaro.io';
@@ -9,7 +13,7 @@ export async function authTakaro() {
     throw new Error('TAKARO_USERNAME and TAKARO_PASSWORD environment variables must be set');
   }
 
-  const client = new Client({
+  client = new Client({
     auth: { password, username },
     url: takaroUrl
   })
@@ -25,4 +29,5 @@ export async function authTakaro() {
     throw error;
   }
 
+  return client;
 }
