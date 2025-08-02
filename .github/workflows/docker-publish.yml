@@ -51,8 +51,6 @@ jobs:
             type=ref,event=pr
             # Git tag
             type=ref,event=tag
-            # Git short SHA
-            type=sha,prefix={{branch}}-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
