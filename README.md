@@ -46,8 +46,11 @@ Set the following environment variables for Takaro authentication:
 ```bash
 export TAKARO_USERNAME="your-username"
 export TAKARO_PASSWORD="your-password"
+export TAKARO_DOMAIN_ID="your-domain-id"  # Required - the domain/tenant to work in
 export TAKARO_HOST="https://api.takaro.io"  # Optional, defaults to https://api.takaro.io
 ```
+
+**Note:** The `TAKARO_DOMAIN_ID` is required to ensure the MCP server operates within the correct tenant/domain. You can find your domain ID in the Takaro dashboard or by using the Takaro API to list available domains.
 
 ### Server Port
 
