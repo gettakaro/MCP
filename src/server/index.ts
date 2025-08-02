@@ -8,7 +8,6 @@ import { ToolRegistry } from '../tools/registry.js';
 import { OpenAPILoader } from '../openapi/loader.js';
 import { OpenAPIToolGenerator } from '../openapi/generator.js';
 import { SchemaResolver } from '../openapi/schema-resolver.js';
-import { ResponseFormatter } from '../utils/formatters.js';
 import { createDynamicTool } from '../tools/dynamic.js';
 
 // Create Express app
@@ -31,7 +30,6 @@ async function initializeTools(): Promise<void> {
     
     // Initialize OpenAPI components
     const openAPILoader = new OpenAPILoader();
-    const responseFormatter = new ResponseFormatter();
     
     // Load OpenAPI spec
     const spec = await openAPILoader.getSpec();
@@ -39,15 +37,15 @@ async function initializeTools(): Promise<void> {
     const toolGenerator = new OpenAPIToolGenerator(openAPILoader, schemaResolver);
     
     // Generate tools from OpenAPI
-    const searchTools = await toolGenerator.generateSearchTools();
+    const allTools = await toolGenerator.generateAllTools();
     
     // Register each generated tool
-    for (const toolInfo of searchTools) {
-      const dynamicTool = createDynamicTool(toolInfo, responseFormatter);
+    for (const toolInfo of allTools) {
+      const dynamicTool = createDynamicTool(toolInfo);
       toolRegistry.register(dynamicTool);
     }
     
-    console.log(`Successfully loaded ${searchTools.length} tools from OpenAPI spec`);
+    console.log(`Successfully loaded ${allTools.length} tools from OpenAPI spec`);
   } catch (error) {
     console.error('Failed to load OpenAPI tools:', error);
     console.log('Server will continue with no dynamically loaded tools');

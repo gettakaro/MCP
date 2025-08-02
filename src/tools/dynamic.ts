@@ -1,10 +1,9 @@
 import { Tool, ToolMetadata, ToolContext, ToolResult } from './base.js';
 import { Client } from '@takaro/apiclient';
-import { ResponseFormatter } from '../utils/formatters.js';
 
 /**
  * DynamicTool implements the Tool interface for dynamically generated tools
- * from OpenAPI specifications. It handles API calls and response formatting.
+ * from OpenAPI specifications. It handles API calls and returns raw JSON responses.
  */
 export class DynamicTool implements Tool {
   public readonly metadata: ToolMetadata;
@@ -13,9 +12,7 @@ export class DynamicTool implements Tool {
   constructor(
     metadata: ToolMetadata,
     inputSchema: any,
-    private apiCallFn: (input: any, client: Client) => Promise<any>,
-    private formatter: ResponseFormatter,
-    private entityType: string
+    private apiCallFn: (input: any, client: Client) => Promise<any>
   ) {
     this.metadata = metadata;
     this.inputSchema = inputSchema;
@@ -38,50 +35,47 @@ export class DynamicTool implements Tool {
       // Call the API using the provided function
       const apiResponse = await this.apiCallFn(input, context.client);
 
-      // Handle different response structures
-      if (this.isSearchOperation()) {
-        // Search operations return paginated responses
-        const response = {
-          data: apiResponse.data?.data || [],
-          meta: apiResponse.data?.meta || {}
-        };
-        
-        return this.formatter.formatPaginatedList(response, this.entityType, input);
-      } else {
-        // Single entity operations
-        const entity = apiResponse.data?.data || apiResponse.data;
-        return this.formatter.formatSingleEntity(entity, this.entityType);
-      }
-    } catch (error) {
-      // Handle Takaro API errors
-      if (this.isTakaroError(error)) {
-        return this.formatter.formatError(error);
-      }
+      // Return raw JSON response
+      const responseData = apiResponse.data?.data !== undefined 
+        ? apiResponse.data 
+        : apiResponse;
 
-      // Handle other errors
-      console.error(`Error executing ${this.metadata.name}:`, error);
-      
       return {
         content: [{
           type: 'text',
-          text: `Failed to execute ${this.metadata.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: JSON.stringify(responseData, null, 2)
+        }]
+      };
+    } catch (error) {
+      // Handle errors and return them as JSON
+      console.error(`Error executing ${this.metadata.name}:`, error);
+      
+      let errorResponse: any = {
+        error: true,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      };
+
+      // Include Takaro API error details if available
+      if (this.isTakaroError(error)) {
+        errorResponse.status = (error as any).response.status;
+        errorResponse.statusText = (error as any).response.statusText;
+        errorResponse.details = (error as any).response.data;
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(errorResponse, null, 2)
         }]
       };
     }
   }
 
   /**
-   * Check if this is a search operation based on the tool name
-   */
-  private isSearchOperation(): boolean {
-    return this.metadata.name.toLowerCase().startsWith('search');
-  }
-
-  /**
-   * Check if the error is a Takaro API error with structured error response
+   * Check if the error is an axios error with response data
    */
   private isTakaroError(error: any): boolean {
-    return error?.response?.data?.errors !== undefined;
+    return error?.response?.data !== undefined;
   }
 }
 
@@ -97,14 +91,11 @@ export function createDynamicTool(
     method: string;
     entityType: string;
     apiCallFn: (input: any, client: Client) => Promise<any>;
-  },
-  formatter: ResponseFormatter
+  }
 ): DynamicTool {
   return new DynamicTool(
     toolInfo.metadata,
     toolInfo.inputSchema,
-    toolInfo.apiCallFn,
-    formatter,
-    toolInfo.entityType
+    toolInfo.apiCallFn
   );
 }
