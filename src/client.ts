@@ -23,39 +23,30 @@ export async function getClient() {
     url: takaroUrl
   })
 
-  try {
-    await client.login();
-    console.log('Successfully authenticated with Takaro');
-    
-    // Set the selected domain
-    try {
-      await client.user.userControllerSetSelectedDomain(domainId);
-      console.log(`Selected domain: ${domainId}`);
-    } catch (domainError) {
-      console.error(`Failed to set domain ${domainId}:`, domainError);
-      throw new Error(`Invalid domain ID or insufficient permissions for domain: ${domainId}`);
-    }
-    
-    // Verify the domain was set correctly
-    const session = await client.user.userControllerMe();
-    console.log(`User: ${session.data.data.user.name}`);
-    
-    // The domain property is a string (domain ID), find the full domain object
-    const activeDomainId = session.data.data.domain;
-    const activeDomain = session.data.data.domains.find(d => d.id === activeDomainId);
-    
-    if (activeDomain) {
-      console.log(`Active domain: ${activeDomain.name} (ID: ${activeDomain.id})`);
-    } else {
-      console.log(`Active domain ID: ${activeDomainId || 'Not set'}`);
-    }
-    
-    if (activeDomainId !== domainId) {
-      throw new Error(`Domain configuration error: Unable to set domain to ${domainId}. Server responded with domain ${activeDomainId}. This may indicate an invalid domain ID or insufficient permissions.`);
-    }
-  } catch (error) {
-    console.error('Failed to authenticate with Takaro:', error);
-    throw error;
+  // Wait for the API to be healthy before attempting authentication
+  const healthTimeout = parseInt(process.env.TAKARO_HEALTH_TIMEOUT || '60000', 10);
+  console.log(`Waiting for Takaro API at ${takaroUrl} to be healthy (timeout: ${healthTimeout / 1000}s)...`);
+  
+  await client.waitUntilHealthy(healthTimeout);
+  console.log('Takaro API is healthy, proceeding with authentication');
+  
+  await client.login();
+  console.log('Successfully authenticated with Takaro');
+  
+  // Set the selected domain
+  await client.user.userControllerSetSelectedDomain(domainId);
+  console.log(`Selected domain: ${domainId}`);
+  
+  // Verify the domain was set correctly
+  const session = await client.user.userControllerMe();
+  const activeDomainId = session.data.data.domain;
+  const activeDomain = session.data.data.domains.find(d => d.id === activeDomainId);
+  
+  console.log(`User: ${session.data.data.user.name}`);
+  console.log(`Active domain: ${activeDomain?.name || activeDomainId} (ID: ${activeDomainId})`);
+  
+  if (activeDomainId !== domainId) {
+    throw new Error(`Domain configuration error: Unable to set domain to ${domainId}. Server responded with domain ${activeDomainId}`);
   }
 
   return client;
