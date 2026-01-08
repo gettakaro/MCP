@@ -123,7 +123,6 @@ export class SchemaResolver {
       console.warn(`Circular reference detected: ${ref}, preserving as $ref`);
       return { $ref: ref };
     }
-    visited.add(ref);
 
     // Only handle local references for now
     if (!ref.startsWith('#/')) {
@@ -133,12 +132,12 @@ export class SchemaResolver {
     // Parse JSON Pointer
     const pointer = ref.substring(2); // Remove '#/'
     const parts = pointer.split('/');
-    
+
     let current: any = this.spec;
     for (const part of parts) {
       // Decode JSON Pointer escapes
       const decodedPart = part.replace(/~1/g, '/').replace(/~0/g, '~');
-      
+
       if (current && typeof current === 'object' && decodedPart in current) {
         current = current[decodedPart];
       } else {
@@ -146,8 +145,12 @@ export class SchemaResolver {
       }
     }
 
+    // Create a new visited set for this branch to track only the current resolution path
+    const pathVisited = new Set(visited);
+    pathVisited.add(ref);
+
     // Recursively resolve if the result contains more $refs
-    return await this.resolveSchema(current, visited);
+    return await this.resolveSchema(current, pathVisited);
   }
 
   /**
