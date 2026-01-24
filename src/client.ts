@@ -33,9 +33,13 @@ export async function getClient() {
   await client.login();
   console.log('Successfully authenticated with Takaro');
   
-  // Set the selected domain
+  // Set the domain header for all subsequent requests (takes precedence over cookie-based selection)
+  client.setDomain(domainId);
+  console.log(`Set X-Takaro-Domain header: ${domainId}`);
+
+  // Also sync the cookie-based domain selection for compatibility
   await client.user.userControllerSetSelectedDomain(domainId);
-  console.log(`Selected domain: ${domainId}`);
+  console.log(`Selected domain via API: ${domainId}`);
   
   // Verify the domain was set correctly
   const session = await client.user.userControllerMe();
