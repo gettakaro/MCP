@@ -36,9 +36,16 @@ export class DynamicTool implements Tool {
       const apiResponse = await this.apiCallFn(input, context.client);
 
       // Return raw JSON response
-      const responseData = apiResponse.data?.data !== undefined 
-        ? apiResponse.data 
-        : apiResponse;
+      const responseData = apiResponse?.data !== undefined ? apiResponse.data : apiResponse;
+      if (Buffer.isBuffer(responseData)) {
+        return {
+          content: [{
+            type: 'image',
+            data: responseData.toString('base64'),
+            mimeType: String(apiResponse.headers?.['content-type'] || 'application/octet-stream')
+          }]
+        };
+      }
 
       return {
         content: [{
@@ -59,7 +66,14 @@ export class DynamicTool implements Tool {
       if (this.isTakaroError(error)) {
         errorResponse.status = (error as any).response.status;
         errorResponse.statusText = (error as any).response.statusText;
-        errorResponse.details = (error as any).response.data;
+        const responseBody = (error as any).response.data;
+        if (Buffer.isBuffer(responseBody)) {
+          const decoded = responseBody.toString('utf8');
+          try { errorResponse.details = JSON.parse(decoded); }
+          catch { errorResponse.details = decoded; }
+        } else {
+          errorResponse.details = responseBody;
+        }
       }
 
       return {

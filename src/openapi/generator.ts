@@ -210,7 +210,10 @@ export class OpenAPIToolGenerator {
     const apiCallFn = this.createApiCallFunction(
       operation.operationId,
       path,
-      method
+      method,
+      Object.values(operation.responses || {}).some((response: any) =>
+        Object.keys(response?.content || {}).some(type =>
+          type.startsWith('image/') || type === 'application/octet-stream'))
     );
 
     return {
@@ -364,7 +367,8 @@ export class OpenAPIToolGenerator {
   private createApiCallFunction(
     operationId: string, 
     path: string, 
-    method: string
+    method: string,
+    binaryResponse = false
   ): (input: any, client: Client) => Promise<any> {
     
     return async (input: any, client: Client) => {
@@ -405,6 +409,9 @@ export class OpenAPIToolGenerator {
           method: method.toLowerCase(),
           url: processedPath,
         };
+        if (binaryResponse || path.includes('/map/tile/')) {
+          axiosConfig.responseType = 'arraybuffer';
+        }
         
         // Handle query parameters vs request body based on method
         if (['get', 'delete'].includes(method.toLowerCase())) {
